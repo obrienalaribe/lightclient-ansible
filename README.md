@@ -1,7 +1,5 @@
 # avail-light-infra
 
-Paste AWS credentials for Avail Mainnet account into terminal
-
 
 cd into the terraform deployment folder for the environment/network
 ```
