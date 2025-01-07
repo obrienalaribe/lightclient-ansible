@@ -1,0 +1,18 @@
+http_server_host = "0.0.0.0"
+log_format_json = true
+genesis_hash = '{{ genesis_hash }}'
+bootstraps = {{ bootstrap_nodes }}
+full_node_ws = {{ full_node_ws }}
+ot_collector_endpoint = "http://otel.lightclient.{{ network }}.avail.so:4317"
+
+operation_mode='server'
+origin='internal'
+query_parallelism = 3
+query_timeout = 15
+replication_factor = 3
+task_command_buffer_size = 30000
+per_connection_event_buffer_size = 10000
+max_negotiating_inbound_streams = 10000
+bootstrap_period = 120
+block_processing_delay = 20
+automatic_server_mode = false

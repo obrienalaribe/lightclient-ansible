@@ -1,0 +1,19 @@
+---
+- name: Restart bootnode
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: true
+    name: avail-bootnode
+    enabled: true
+
+- name: Restart journald
+  ansible.builtin.systemd:
+    state: restarted
+    name: systemd-journald
+    enabled: true
+
+- name: Restart DD Agent
+  ansible.builtin.systemd:
+    state: restarted
+    name: datadog-agent
+    enabled: true

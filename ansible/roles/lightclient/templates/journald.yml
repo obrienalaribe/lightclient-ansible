@@ -1,0 +1,12 @@
+
+logs:
+    {%- for num in range(service_start|int, service_end|int) %}
+
+    - type: journald
+      config_id: {{ service_prefix }}-{{ num }}
+      source:  {{ service_prefix }}-{{ num }}.service
+      service: {{ client_version }}
+      include_units:
+          - {{ service_prefix }}-{{ num }}.service
+    {%- endfor %}
+    

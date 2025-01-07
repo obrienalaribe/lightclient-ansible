@@ -1,0 +1,120 @@
+---
+
+
+- name: Check if bin exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/{{ service_prefix }}-{{ client_version }}
+  register: bin_installed
+  
+- name: Download avail-light binary
+  block:
+    - name: Remove any existing versions
+      shell: rm /usr/local/bin/avail* /opt/avail* || true
+      ignore_errors: true
+
+    - name: Download avail-light archive on x86_64 architecture
+      register: avail_download_results
+      ansible.builtin.get_url:
+        url: https://github.com/availproject/avail-light/releases/download/{{ client_version }}/avail-light-linux-amd64.tar.gz
+        dest: /opt/avail_light_{{ client_version }}_linux_amd.tar.gz
+        mode: 0600
+        force: false
+        timeout: 300
+      when: ansible_architecture == "x86_64"
+    - name: Download avail-light archive on aarch64 architecture
+      register: avail_download_results
+      ansible.builtin.get_url:
+        url: https://github.com/availproject/avail-light/releases/download/{{ client_version }}/avail-light-linux-arm64.tar.gz #arm64 or aarch64
+        dest: /opt/avail_light_{{ client_version }}_linux_aarch64.tar.gz
+        mode: 0600
+        force: false
+        timeout: 300
+      when: ansible_architecture == "aarch64"
+
+- name: Extract avail-light archive
+  block:
+    - name: Extract avail-light archive on x86_64 architecture
+      ansible.builtin.unarchive:
+        src: /opt/avail_light_{{ client_version }}_linux_amd.tar.gz
+        dest: /opt
+        remote_src: true
+      when: ansible_architecture == "x86_64"
+    - name: Extract avail-light archive on aarch64 architecture
+      ansible.builtin.unarchive:
+        src: /opt/avail_light_{{ client_version }}_linux_aarch64.tar.gz
+        dest: /opt
+        remote_src: true
+      when: ansible_architecture == "aarch64"
+
+- name: Create a symbolic link for avail-light
+  block:
+    - name: Create a symbolic link on x86_64 architecture
+      ansible.builtin.file:
+        src: /opt/avail-light-linux-amd64
+        dest: /usr/local/bin/{{ service_prefix }}-{{ client_version }}
+        state: link
+      when: ansible_architecture == "x86_64"
+    - name: Create a symbolic link on aarch64 architecture
+      ansible.builtin.file:
+        src: /opt/avail-light-linux-arm64 #arm64 or aarch64
+        dest: /usr/local/bin/{{ service_prefix }}-{{ client_version }}
+        state: link
+      when: ansible_architecture == "aarch64"
+
+
+# setup user
+- name: Set up the avail group
+  when: not bin_installed.stat.exists
+  block:
+    - name: Create the avail group
+      ansible.builtin.group:
+        name: "{{ avail_user }}"
+        state: present
+
+    - name: Add the avail user to the avail group
+      ansible.builtin.user:
+        name: "{{ avail_user }}"
+        groups: "{{ avail_user }}"
+        comment: Avail Application user
+
+    - name: Add the datadog user to the avail group
+      ansible.builtin.user:
+        name: dd-agent
+        groups: "{{ avail_user }}"
+        comment: Avail Application user
+        append: true
+
+- name: Create avail folders
+  when: not bin_installed.stat.exists
+  block:
+    - name: Create folder for avail data
+      ansible.builtin.file:
+        path: "{{ avail_home }}"
+        owner: "{{ avail_user }}"
+        group: "{{ avail_user }}"
+        state: directory
+        mode: 0777
+
+    - name: Create folder for avail configs
+      ansible.builtin.file:
+        path: /etc/avail-light
+        owner: "{{ avail_user }}"
+        group: "{{ avail_user }}"
+        state: directory
+        mode: 0777
+
+    - name: Setup aliases
+      blockinfile:
+        path: /etc/bash.bashrc
+        create: yes
+        block: |
+          alias logs="journalctl -u avail-* -f"
+          alias svc='cd /etc/systemd/system/'
+          alias home='cd /var/lib/avail-light'
+      become: yes
+
+    - name: Copy reset script to remote host
+      ansible.builtin.template:
+        src: reset.sh
+        dest: "{{ service_dir }}/reset.sh"
+        mode: '0755'

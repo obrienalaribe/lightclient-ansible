@@ -1,0 +1,16 @@
+---
+
+- name: Restart DD Agent
+  ansible.builtin.systemd:
+    state: restarted
+    name: datadog-agent
+    daemon_reload: true
+    enabled: true
+
+# needed for Digital Ocean
+- name: Restart journald
+  ansible.builtin.systemd:
+    state: restarted
+    name: systemd-journald
+    daemon_reload: true
+    enabled: true

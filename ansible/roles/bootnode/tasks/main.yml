@@ -1,0 +1,45 @@
+- name: Fail if variable `bootnode_version` is not defined
+  ansible.builtin.fail:
+    msg: "The variable 'bootnode_version' is not defined. Needs env var BOOTNODE_VERSION"
+  when: bootnode_version == ""
+
+- name: Debug bootnode_version
+  debug:
+    msg: "bootnode_version: {{ bootnode_version }}"
+
+- name: Include vars for {{ network }} network
+  include_vars:
+    file: "{{ network }}.yml"
+
+- name: Check if bin exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/{{ service_prefix }}-{{ bootnode_version }}
+  register: bin_installed
+
+- ansible.builtin.include_tasks: binary.yml
+  when: not bin_installed.stat.exists
+
+- name: Create config file for {{ group_names[0] }}
+  ansible.builtin.template:
+    src: "{{ group_names[0] }}.toml"
+    dest: "/etc/avail-light/config.toml"
+    owner: "{{ avail_user }}"
+    group: "{{ avail_user }}"
+    mode: 0755
+  notify:
+    - Restart bootnode
+    
+- name: Copy service file
+  ansible.builtin.template:
+    src: "{{ group_names[0] }}.service"
+    dest: "{{ service_dir }}/{{service_prefix}}.service"
+    mode: '0755'
+  notify:
+    - Restart bootnode
+
+# install datadog
+- include_role: 
+    name: datadog
+  vars:
+    name: "{{ service_prefix }}"
+    version: "{{ bootnode_version }}"
